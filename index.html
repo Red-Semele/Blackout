@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blackout Poetry Game</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace, sans-serif;
+            margin: 20px;
+        }
+
+        #poetry-container {
+            width: 600px;
+            margin: 20px auto;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+
+         /* Ensure that words don't break across lines */
+        .word {
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        /* Style for letters */
+        .letter {
+            display: inline-block;
+            padding: 0 2px;
+            cursor: pointer;
+        }
+
+        /* Blackout style */
+        .blackout {
+            background-color: black;
+            color: black;
+        }
+
+        /* Selection style */
+        .selected {
+            background-color: lightblue;
+            color: blue
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="poetry-container"></div>
+    <button id="new-text">Get New Text</button>
+
+    <script src="poetry.js"></script>
+</body>
+</html>
