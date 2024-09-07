@@ -163,8 +163,42 @@ function getNewPoetry() {
     }
 }
 
+
+
 // Initial load of text
 getNewPoetry();
 
 // Event listener for "Get New Text" button
 newTextButton.addEventListener('click', getNewPoetry);
+
+const exportButton = document.getElementById("export-poetry");
+
+function exportPoetry() {
+    // Get the poetry container element
+    const poetryContainer = document.getElementById("poetry-container");
+
+    // Use html2canvas to capture the poetry container as an image
+    html2canvas(poetryContainer, {
+        useCORS: true,
+        backgroundColor: null, // Set background to transparent to handle blacked-out areas
+        logging: true, // Enable logging to debug issues
+        scale: 2 // Increase scale for higher resolution
+    }).then(canvas => {
+        // Create a temporary link element for downloading the image
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL("image/png");
+        link.download = 'blackout-poetry.png';
+        document.body.appendChild(link);
+
+        // Trigger the download
+        link.click();
+
+        // Remove the link from the DOM
+        document.body.removeChild(link);
+    }).catch(error => {
+        console.error('Error generating image:', error);
+    });
+}
+
+// Event listener for export button
+exportButton.addEventListener('click', exportPoetry);
