@@ -1,26 +1,19 @@
-// poetry.js
-//TODO: Probably use monospace font so every letter is the same size.
 const poetryContainer = document.getElementById("poetry-container");
 const newTextButton = document.getElementById("new-text");
+const exportButton = document.getElementById("export-poetry");
 
 let isSelecting = false; // Tracks whether the user is selecting text
-let startSpan = null; // The first span element clicked to start selection
+let selectedElements = []; // Tracks the selected spans (letters)
 
 // Full-page length sample texts with line breaks
 const texts = [
     `In the stillness of the early morning,\nbefore the sun crests the horizon, the world is a place of silence and shadow.\n\nThe trees, tall and ancient, stand like guardians of the night, their leaves rustling only when the wind dares to breathe.`,
-    
     `The city was a labyrinth of streets and alleys,\neach turn offering a new sight, a new sound, a new mystery to unravel.\nThe buildings, towering and close together, created a maze of shadows that danced along the pavement...`,
-    
     `The sea stretched out before me,\nan endless expanse of blue that seemed to go on forever.\nThe waves crashed against the shore with a steady rhythm...`,
-    
-    `The mountains rose up around me,\ntowering peaks that seemed to touch the sky.\nThe path beneath my feet was narrow and winding...\n`,
-
-    `Blah blah
-    blababa blabba`
+    `The mountains rose up around me,\ntowering peaks that seemed to touch the sky.\nThe path beneath my feet was narrow and winding...\n`
 ];
 
-// Ghost sentences that the ghost tries to reveal
+// Ghost's predefined messages
 const ghostMessages = [
     "help me",
     "find me",
@@ -28,36 +21,40 @@ const ghostMessages = [
     "see the truth",
     "they know",
     "follow the signs",
-    "i am waiting"
+    "i am waiting",
+    "charon had already brought him halfway when a man heard calling out to him. Not coming from his destination. He lept off the boat he had paid to get on.",
+    "I saw her standing there. A being of light and fire. The very reason the Void knows travellers. That you know them. The divine sun casts a gate of shadow."
 ];
 
-// Function to make the ghost search for its message
-function ghostBlackout(textArray, ghostMessage) {
-    let currentLetterIndex = 0; // Track which letter the ghost is currently searching for
+let currentGhostMessage = "";
+let ghostProgress = 0;
+let ghostActive = false;
 
-    for (let i = 0; i < textArray.length; i++) {
-        const letter = textArray[i].textContent.toLowerCase(); // Get current letter (ignore case)
+// Function to randomly pick a ghost message
+function getRandomGhostMessage() {
+    return ghostMessages[Math.floor(Math.random() * ghostMessages.length)];
+}
 
-        if (letter === ghostMessage[currentLetterIndex]) {
-            // If the letter matches the next one in the ghost's message, move to the next letter
-            currentLetterIndex++;
-            if (currentLetterIndex >= ghostMessage.length) {
-                // If the ghost's message is complete, blackout the remaining text
-                for (let j = i + 1; j < textArray.length; j++) {
-                    textArray[j].classList.add('blackout');
-                }
-                break; // Stop processing after the message is complete
-            }
-        } else if (letter !== '\u00A0') {
-            // Black out any non-space letters that don't match the ghost's message
-            textArray[i].classList.add('blackout');
-        } else if (ghostMessage[currentLetterIndex] === ' ') {
-            // Leave space visible if it's part of the ghost's message
-            currentLetterIndex++;
-        } else {
-            // Otherwise, black out spaces (including line breaks) that are not needed
-            textArray[i].classList.add('blackout');
+// Function to display new poetry (either with or without the ghost)
+function getNewPoetry() {
+    const text = getRandomText(); // Get a random piece of text
+
+    // 30% chance to display a ghost message
+    const isGhost = Math.random() < 0.3;
+
+    if (isGhost || ghostActive) {
+        // If ghost is already active, continue the message
+        if (!ghostActive) {
+            // If ghost isn't active yet, pick a random ghost message and start
+            currentGhostMessage = getRandomGhostMessage();
+            ghostProgress = 0; // Start at the beginning of the message
+            ghostActive = true;
         }
+
+        console.log("Ghost message: ", currentGhostMessage);
+        displayText(text, true, currentGhostMessage); // Display with ghost blackout
+    } else {
+        displayText(text, false); // Display normal text
     }
 }
 
@@ -69,7 +66,7 @@ function displayText(text, isGhost = false, ghostMessage = "") {
     // Create span elements for each character and handle line breaks
     for (let i = 0; i < text.length; i++) {
         const span = document.createElement('span');
-        
+
         // Treat line breaks ('\n') as non-breaking spaces and add a line-break class
         if (text[i] === '\n') {
             span.textContent = '\u00A0'; // Non-breaking space for visual consistency
@@ -78,127 +75,126 @@ function displayText(text, isGhost = false, ghostMessage = "") {
             span.textContent = text[i] === ' ' ? '\u00A0' : text[i]; // Preserve spaces
             span.classList.add('letter');
         }
-        
+
         // Add event listeners for selection
         span.addEventListener('mousedown', (e) => handleMouseDown(e, span));  // Start selection
         span.addEventListener('mouseenter', (e) => handleMouseEnter(e, span)); // Mouseover for selection
-        span.addEventListener('mouseup', handleMouseUp);  // End selection
-        
-        textArray.push(span);
+
         poetryContainer.appendChild(span);
+        textArray.push(span);
     }
 
-    // Apply "ghost" blackout if applicable
+    // Apply ghost blackout if applicable
     if (isGhost) {
         ghostBlackout(textArray, ghostMessage);
     }
 }
 
-// Selection logic: Handles the start of a selection (mouse down)
-function handleMouseDown(event, span) {
-    event.preventDefault();  // Prevent text highlighting
-    isSelecting = true;
-    startSpan = span;
-    span.classList.toggle('selected');  // Toggle selection on click
+// Function to blackout letters to hide parts of the text based on the ghost message
+function ghostBlackout(textArray, ghostMessage) {
+    let currentGhostIndex = ghostProgress; // Start from where the ghost left off
+    let messageCompleted = false; // Track if the ghost message is completed
+
+    for (let i = 0; i < textArray.length; i++) {
+        const letter = textArray[i].textContent.toLowerCase();
+
+        if (!messageCompleted && currentGhostIndex < ghostMessage.length) {
+            if (letter === ghostMessage[currentGhostIndex].toLowerCase()) {
+                // Leave the letter visible and move to the next ghost message character
+                currentGhostIndex++;
+            } else if (letter === '\u00A0' && ghostMessage[currentGhostIndex] === ' ') {
+                // Handle spaces
+                currentGhostIndex++;
+            } else {
+                // Black out any letters that don't match the ghost's message
+                textArray[i].classList.add('blackout');
+            }
+        } else {
+            // Black out the remaining text after the ghost message is completed
+            textArray[i].classList.add('blackout');
+        }
+
+        if (currentGhostIndex >= ghostMessage.length) {
+            messageCompleted = true; // Mark the ghost message as completed
+            ghostProgress = 0; // Reset progress for the next ghost message
+            ghostActive = false; // Ghost has finished delivering the message
+        }
+    }
+
+    // Update ghost progress if not completed
+    if (!messageCompleted) {
+        ghostProgress = currentGhostIndex; // Continue in the next text
+    }
 }
 
-// Selection logic: Handles entering letters while selecting
+// Handle text selection (mousedown, mouseenter, mouseup events)
+function handleMouseDown(event, span) {
+    event.preventDefault(); // Prevent default text selection behavior
+    isSelecting = true;
+    span.classList.add('selected'); // Add selected class to span
+    selectedElements = [span]; // Track the selected element
+}
+
 function handleMouseEnter(event, span) {
     if (isSelecting) {
-        span.classList.add('selected');  // Highlight letter during selection
+        span.classList.add('selected'); // Continue to select as mouse hovers over spans
+        selectedElements.push(span); // Track selected spans
     }
 }
 
 function handleMouseUp(event) {
     if (isSelecting) {
-        const selectedSpans = document.querySelectorAll('.selected');
+        isSelecting = false;
 
-        // Loop through the selected spans and invert their blackout state
-        selectedSpans.forEach(span => {
+        // Process any remaining selected text
+        document.querySelectorAll('.letter.selected').forEach(span => {
             if (span.classList.contains('blackout')) {
-                // If the span is already blacked out, remove the blackout
-                span.classList.remove('blackout');
+                span.classList.remove('blackout'); // Remove blackout if already applied
             } else {
-                // If the span is not blacked out, apply the blackout
-                span.classList.add('blackout');
+                span.classList.add('blackout'); // Apply blackout to selected elements
             }
-
-            // Remove the selection highlighting
-            span.classList.remove('selected');
+            span.classList.remove('selected'); // Remove selection after mouseup
         });
 
-        // End selection
-        isSelecting = false;
+        // Clear selectedElements array
+        selectedElements = [];
     }
 }
 
-// Detect if the mouse goes up outside the container (to end selection)
-document.addEventListener('mouseup', () => {
-    isSelecting = false;
-    document.querySelectorAll('.selected').forEach(span => span.classList.remove('selected'));
-});
+// Add a global mouseup event listener to handle selection outside the text container
+document.addEventListener('mouseup', handleMouseUp);
 
-// Function to get random text from the list
-function getRandomText() {
-    const randomIndex = Math.floor(Math.random() * texts.length);
-    return texts[randomIndex];
-}
-
-// Function to get a random ghost message
-function getRandomGhostMessage() {
-    const randomIndex = Math.floor(Math.random() * ghostMessages.length);
-    return ghostMessages[randomIndex];
-}
-
-// Function to determine whether to show a ghost message
-function getNewPoetry() {
-    const text = getRandomText();
-    const isGhost = Math.random() < 0.3; // 30% chance to get ghost text
-
-    if (isGhost) {
-        const ghostMessage = getRandomGhostMessage();
-        displayText(text, true, ghostMessage);
-    } else {
-        displayText(text, false);
-    }
-}
-
-
-
-// Initial load of text
-getNewPoetry();
-
-// Event listener for "Get New Text" button
+// Event listener for "New Text" button to get a new piece of poetry
 newTextButton.addEventListener('click', getNewPoetry);
 
-const exportButton = document.getElementById("export-poetry");
-
-function exportPoetry() {
-    // Get the poetry container element
-    const poetryContainer = document.getElementById("poetry-container");
-
-    // Use html2canvas to capture the poetry container as an image
-    html2canvas(poetryContainer, {
-        useCORS: true,
-        backgroundColor: null, // Set background to transparent to handle blacked-out areas
-        logging: true, // Enable logging to debug issues
-        scale: 2 // Increase scale for higher resolution
-    }).then(canvas => {
-        // Create a temporary link element for downloading the image
-        const link = document.createElement('a');
-        link.href = canvas.toDataURL("image/png");
-        link.download = 'blackout-poetry.png';
-        document.body.appendChild(link);
-
-        // Trigger the download
-        link.click();
-
-        // Remove the link from the DOM
-        document.body.removeChild(link);
-    }).catch(error => {
-        console.error('Error generating image:', error);
-    });
+// Function to get random text from the predefined list
+function getRandomText() {
+    return texts[Math.floor(Math.random() * texts.length)];
 }
 
-// Event listener for export button
-exportButton.addEventListener('click', exportPoetry);
+// Export functionality to share the blackout poetry
+exportButton.addEventListener('click', () => {
+    let exportText = "";
+
+    // Loop through the container's children (spans) and build the export string
+    for (const span of poetryContainer.children) {
+        if (span.classList.contains('blackout')) {
+            exportText += "█"; // Represent blacked-out letters with block character
+        } else {
+            exportText += span.textContent; // Include visible letters/spaces
+        }
+    }
+
+    // Create a downloadable file
+    const blob = new Blob([exportText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+
+    // Create a link element and trigger a download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'blackout_poetry.txt';
+    a.click();
+
+    // Release the object URL after download
+    URL.revokeObjectURL(url);
+});
